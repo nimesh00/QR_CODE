@@ -1,6 +1,11 @@
 import cv2
 import numpy as np
+import math
 
+cam = cv2.VideoCapture(0)
+cam.set(13, 0)
+cam.set(12, 0)
+cam.set(11, 100)
 lower_black = [0, 0, 0]
 upper_black = [0, 0, 10]
 def detect_all_squares(image):
@@ -15,7 +20,7 @@ def detect_all_squares(image):
 		epsilon = 0.15 * cv2.arcLength(cnt, True)
 		approx = cv2.approxPolyDP(cnt, epsilon, True)
 		area = cv2.contourArea(cnt)
-		if area > 400:
+		if area > 40:
 			if len(approx) == 4:
 				cv2.drawContours(image, [cnt], 0, (255, 0, 0), 1)
 				squares = squares + [cnt]
@@ -24,7 +29,6 @@ def detect_all_squares(image):
 
 def sorted_areas(contours):
 	areas = []
-	print "total contours: ", len(contours)
 	required_areas = []
 	required_contour = []
 	no_of_contours = 0
@@ -53,31 +57,48 @@ def sorted_areas(contours):
 					required_contour[: no_of_contour_here + 1] = required_contour[: no_of_contour_here + 1] + [cnt]
 					break
 		required_contour = required_contour[:9]
-		print len(required_contour)
-	
 	return required_contour
 
+def angle(x1, x2, y1, y2):
+	if x1 == x2:
+		return 90
+	return math.atan(float(y1 - y1) / (x1 - x2))
+
+def positioned(pt1, pt2, pt3):
+	angle1 = angle(pt1[0], pt2[0], pt1[1], pt2[1])
+	angle2 = angle(pt1[0], pt3[0], pt1[1], pt3[1])
+	print angle1, angle2
+	if angle1 - angle2 != 90:
+		return False
+	return True
 
 def main():
 	positioning_squares = []
-	image = cv2.imread("qr.png")
-	square_contours = detect_all_squares(image)
-	positioning_squares = sorted_areas(square_contours)
-	print "contours returned: ", len(positioning_squares)
-	i = 0
-	cv2.drawContours(image, [positioning_squares[3]], 0, (0, 255, 0), 1)
-	cv2.imshow('image', image)
-	for coor in positioning_squares:
-		print "coordinate",i, "area", cv2.contourArea(coor),": ", coor
-		i += 1
-		cv2.drawContours(image, [coor], 0, (0, 0, 255), 1)
-	upper_left = positioning_squares[1][0][0]
-	print upper_left
-	print "upper_left_x: ", upper_left[0]
-	cv2.imshow('image', image);
-	k = cv2.waitKey(0)
+	while True:
+		ret, image = cam.read()
+		if not ret:
+			image = cv2.imread("qr.png")
+		square_contours = detect_all_squares(image)
+		positioning_squares = sorted_areas(square_contours)
+		for coor in positioning_squares :
+			cv2.drawContours(image, [coor], 0, (0, 0, 255), 1)
+		cv2.imshow('image', image);
+		print "trying to get the corner squares......"
+		if (len(positioning_squares) > 2):
+			upper_left_corner = positioning_squares[0][0][0]
+			bottom_left_corner = positioning_squares[2][1][0]
+			upper_right_corner = positioning_squares[1][3][0]
+		else:
+			continue
+		if not positioned(upper_left_corner, bottom_left_corner, upper_right_corner):
+			continue
+		cv2.imwrite('snap_img.png', image)
+		break
+		k = cv2.waitKey(30)
+		if k == 27:
+			break
 	cv2.destroyAllWindows()
-
+	cam.release()
 
 
 if __name__ == "__main__":
