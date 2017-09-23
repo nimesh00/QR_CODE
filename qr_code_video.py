@@ -3,9 +3,6 @@ import numpy as np
 import math
 
 cam = cv2.VideoCapture(0)
-cam.set(13, 0)
-cam.set(12, 0)
-cam.set(11, 100)
 lower_black = [0, 0, 0]
 upper_black = [0, 0, 10]
 def detect_all_squares(image):
@@ -75,7 +72,9 @@ def positioned(pt1, pt2, pt3):
 def main():
 	positioning_squares = []
 	while True:
+		cv2.waitKey(30)
 		ret, image = cam.read()
+		image = cv2.GaussianBlur(image, (3,3), 0)
 		if not ret:
 			image = cv2.imread("qr.png")
 		square_contours = detect_all_squares(image)
