@@ -54,7 +54,7 @@ def sorted_areas(contours):
 		print len(required_contour)
 	
 	return required_contour
-'''
+
 def make_grid(pos_sq, imag):
 	upper_left = pos_sq[0][0][0]
 	bottom_left = pos_sq[2][1][0]
@@ -71,6 +71,8 @@ def make_grid(pos_sq, imag):
 	while y_iter < bottom_left[1]:
 		cv2.line(imag, (x_iter, y_iter), (upper_right[0], y_iter), (0, 255, 255), 1)
 		y_iter += wy
+	cv2.imshow('grided', imag)
+	return imag
 
 def mark_data_squares(image):
 	squares = []
@@ -87,7 +89,7 @@ def mark_data_squares(image):
 			cv2.drawContours(image, [cnt], 0, (0, 0, 255), 1)
 			squares = squares + [cnt]
 	return squares
-'''
+
 def generate_array(img, ul, ur, bl):
 	array = [[0 for i in range(21)] for j in range(21)]
 	qr = img[ul[1]:bl[1], ul[0]:ur[0]]
@@ -106,7 +108,7 @@ def generate_array(img, ul, ur, bl):
 def main():
 	positioning_squares = []
 	font = cv2.FONT_HERSHEY_SIMPLEX
-	image = cv2.imread("qr.png")
+	image = cv2.imread("qr_dev.png")
 	image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 	ret, image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)
 	image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
@@ -114,6 +116,8 @@ def main():
 	image2 = cv2.imread("qr.png")
 	square_contours = detect_all_squares(image)
 	positioning_squares = sorted_areas(square_contours)
+	gridImage = make_grid(positioning_squares, image2)
+	data_squares = mark_data_squares(gridImage)
 	print "contours returned: ", len(positioning_squares)
 	i = 0
 	cv2.drawContours(image, [positioning_squares[3]], 0, (0, 255, 0), 1)
@@ -136,6 +140,7 @@ def main():
 	cv2.putText( image, "upper_right_corner", (upper_right_corner[0], upper_right_corner[1]), font, 0.8, (0, 255, 0), 2, cv2.LINE_AA)
 	cv2.imshow('image', image)
 	
+	cv2.imshow('grided', gridImage)
 	cv2.waitKey(0)
 	cv2.destroyAllWindows()
 
