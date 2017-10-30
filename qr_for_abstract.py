@@ -175,8 +175,11 @@ def generate_array(img, ul, ur, bl):
 	blue_channel = qr[:, :, 0]
 	for i in range(21):
 		for j in range(21):
-			if blue_channel[i, j] < 132:
-				array[i][j] = 1
+			if blue_channel[i, j] < 127:
+				if ((i < 7 or i > 13) and j < 7)  or ((j < 7 or j > 13) and i < 7):
+					array[i][j] = 2
+				else:
+					array[i][j] = 1
 			else:
 				array[i][j] = 0
 	for k in range(21):
@@ -206,7 +209,7 @@ def main():
 	ret, image[:, :, :] = cv2.threshold(image[:, :, :], 110, 255, cv2.THRESH_BINARY)
 	#image = cv2.GaussianBlur(image, (5,5), 0)
 	image2 = cv2.imread("qr_dev.png")
-	cv2.imshow('imagedff', image)
+	cv2.imshow('thresholding', image)
 	square_contours = detect_all_squares(image)
 	positioning_squares = sorted_areas(square_contours)
 	#gridImage = make_grid(positioning_squares, image2)
@@ -227,7 +230,7 @@ def main():
 	small_image = cv2.GaussianBlur(small_image, (3, 3), 0)
 	ret, small_image = cv2.threshold(small_image, 100, 255, cv2.THRESH_BINARY)
 	small_image = cv2.cvtColor(small_image, cv2.COLOR_GRAY2BGR)
-	cv2.imshow('small_wala', small_image)
+	cv2.imshow('small_with_corner', small_image)
 	cv2.waitKey(0)
 	cv2.imwrite('small_qr.png', small_image)
 	small2 = cv2.imread('small_qr.png')
@@ -270,7 +273,7 @@ def main():
 	cv2.putText(small2, "bottom_left_corner", (bottom_left_corner[0], bottom_left_corner[1]), font, 0.8, (0, 255, 0), 2, cv2.LINE_AA)
 	cv2.circle(small2, (upper_right_corner[0], upper_right_corner[1]), 10, (255, 255, 0), -1)
 	cv2.putText(small2, "upper_right_corner", (upper_right_corner[0], upper_right_corner[1]), font, 0.8, (0, 255, 0), 2, cv2.LINE_AA)
-	cv2.imshow('small', small2)
+	cv2.imshow('final contours', small2)
 	
 	
 	image_to_show = cv2.imread('qr_dev.png')
@@ -278,7 +281,7 @@ def main():
 	for i in range(height):
 		for j in range(width):
 			image_to_show[i, j] = small2[i, j]
-	cv2.imshow('can be shown', image_to_show)
+	cv2.imshow('original with final contours', image_to_show)
 	
 	cv2.waitKey(0)
 	cv2.destroyAllWindows()
