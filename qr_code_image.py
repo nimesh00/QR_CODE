@@ -96,17 +96,85 @@ def generate_array(img, ul, ur, bl):
 	for i in range(21):
 		for j in range(21):
 			if blue_channel[i, j] < 127:
-				array[i][j] = 1
+				if ((i < 7 or i > 13) and j < 7)  or ((j < 7 or j > 13) and i < 7):
+					array[i][j] = 2
+				else:
+					array[i][j] = 1
 			else:
 				array[i][j] = 0
 	for k in range(21):
 		print array[k]
 	cv2.imshow('clipped', qr)
+	return array
 
+def get_mask_array(mask_number):
+	array = [[0 for i in range(21)] for j in range(21)]
+	for i in range(21):
+		for j in range(21):
+			if mask_number == 0:
+				if ((i * j) % 2 + (i * j) %3) == 0:
+					array[i][j] = 1
+				else:
+					array[i][j] = 0
+			elif mask_number == 1:
+				if (i / 2 + j / 3) % 2 == 0:
+					array[i][j] = 1
+				else:
+					array[i][j] = 0
+			elif mask_number == 2:
+				if ((i * j) % 3 + i + j) % 2 == 0:
+					array[i][j] = 1
+				else:
+					array[i][j] = 0
+			elif mask_number == 3:
+				if ((i * j) % 3 + i * j) % 2 == 0:
+					array[i][j] = 1
+				else:
+					array[i][j] = 0
+			elif mask_number == 4:
+				if i % 2 == 0:
+					array[i][j] = 1
+				else:
+					array[i][j] = 0
+			elif mask_number == 5:
+				if (i + j) % 2 == 0:
+					array[i][j] = 1
+				else:
+					array[i][j] = 0
+			elif mask_number == 6:
+				if (i + j) % 3 == 0:
+					array[i][j] = 1
+				else:
+					array[i][j] = 0
+			elif mask_number == 7:
+				if j % 3 == 0:
+					array[i][j] = 1
+				else:
+					array[i][j] = 0
+	print "Mask Pattern:"
+	for k in range(21):
+		print array[k]
+	return array
+
+def unmask(array):
+	number = 0
+	number = 4 * array[8][2] + 2 * array[8][3] + array[8][4]
+	mask_pattern_array = get_mask_array(number)
+	
+	# ---TODO---SPECIAL AREAS NOT CONSIDERED RIGHT NOW. DO THAT FAST
+	for i in range(21):
+		for j in range(21):
+			if (mask_pattern_array[i][j] == 1):
+				if (array[i][j] == 1):
+					array[i][j] = 0
+				elif array[i][j] == 0:
+					array[i][j] = 1
+	return array
+					
 def main():
 	positioning_squares = []
 	font = cv2.FONT_HERSHEY_SIMPLEX
-	image = cv2.imread("qr.png")
+	image = cv2.imread("qr_22.png")
 	image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 	ret, image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)
 	image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
@@ -128,6 +196,12 @@ def main():
 	bottom_left_corner = positioning_squares[2][1][0]
 	upper_right_corner = positioning_squares[1][3][0]
 	qr_array = generate_array(cv2.imread('qr.png'), upper_left_corner, upper_right_corner, bottom_left_corner)
+	unmasked_qr = unmask(qr_array)
+	
+	print 'unamsked qr data:'
+	for i in range(21):
+		print unmasked_qr[i]
+	
 	cv2.circle(image, (upper_left_corner[0], upper_left_corner[1]), 10, (255, 255, 0), -1)
 	cv2.putText( image, "upper_left_corner", (upper_left_corner[0], upper_left_corner[1]), font, 0.8, (0, 255, 0), 2, cv2.LINE_AA)
 	cv2.circle(image, (bottom_left_corner[0], bottom_left_corner[1]), 10, (255, 255, 0), -1)
