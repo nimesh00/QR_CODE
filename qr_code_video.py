@@ -99,8 +99,8 @@ def check_points(pos_sq):
 		pos_sq[2] = swapper
 	x1 = [ulc[0], urc[0], blc[0]]
 	y1 = [ulc[1], urc[1], blc[1]]
-	angles = angle(x1[:], y1[:], x1[:], y1[:])
-	sort(angles)
+	#angles = angle(x1[:], y1[:], x1[:], y1[:])
+	#sort(angles)
 	
 	return pos_sq
 
@@ -129,7 +129,7 @@ def main():
 		cv2.imshow('image', image);
 		print "trying to get the corner squares......"
 		if (len(positioning_squares) > 2):
-			positioning_squares = check_points(positioning_squares)
+			#positioning_squares = check_points(positioning_squares)
 			upper_left_corner = positioning_squares[1][0][0]
 			bottom_left_corner = positioning_squares[2][1][0]
 			upper_right_corner = positioning_squares[0][3][0]

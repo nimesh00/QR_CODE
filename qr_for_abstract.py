@@ -134,6 +134,7 @@ def angle(xp,yp,xb,yb):
 
 
 def get_small_area_image(img, p1, p2, p0):
+	''' NOT COMPLETE - MORE CASES TO BE ADDED FOR CORRECT ORIENTATION IN EVERY ORIENTETION'''
 	x_coor = []
 	y_coor = []
 	max_dis_bw = []
@@ -165,17 +166,38 @@ def get_small_area_image(img, p1, p2, p0):
 	
 	small_img = rotate(small_img, rotation_angle - 90)
 	
-	cv2.imshow('small_one', small_img)
+	#cv2.imshow('small_one', small_img)
 	return small_img
+
+def normalised(qr):
+	height, width = qr.shape[:2]
+	block_height = height / 21
+	block_width = width / 21
+	block_total = 0
+	array = [[0 for i in range(21)] for j in range(21)]
+	for i in range(21):
+		for j in range(21):
+			block_total = 0
+			for k in range(block_height):
+				for l in range(block_width):
+					block_total += qr[block_height * i + k][block_width * j + l]
+			array[i][j] = block_total / (block_height * block_width)
+	'''
+	print "normalised values"
+	for i in range(21):
+		print array[i]
+	'''
+	return array
 
 def generate_array(img, ul, ur, bl):
 	array = [[0 for i in range(21)] for j in range(21)]
 	qr = img[ul[1]:bl[1], ul[0]:ur[0]]
-	qr = cv2.resize(qr, (21, 21), interpolation = cv2.INTER_AREA)
-	blue_channel = qr[:, :, 0]
+	qr = cv2.cvtColor(qr, cv2.COLOR_BGR2GRAY)
+	qr = cv2.resize(qr, (210, 210), interpolation = cv2.INTER_AREA)
+	averaged_array = normalised(qr)
 	for i in range(21):
 		for j in range(21):
-			if blue_channel[i, j] < 127:
+			if averaged_array[i][j] < 100:
 				if ((i < 7 or i > 13) and j < 7)  or ((j < 7 or j > 13) and i < 7):
 					array[i][j] = 2
 				else:
@@ -199,7 +221,20 @@ def get_corner_points(p0, p1, p2):
 	xmax = np.amax(x_coor)
 	ymin = np.amin(y_coor)
 	ymax = np.amax(y_coor)
-	return [xmin, ymin], [xmax, ymin], [xmin, ymax], [xmax, ymax]
+	ul = [p0[0][0][0], p0[0][0][1]]
+	ur = [p0[0][0][0], p0[0][0][1]]
+	bl = [p0[0][0][0], p0[0][0][1]]
+	for i in range(3):
+		for coor in points[i]:
+			if distance(xmin, ymin, coor[0][0], coor[0][1]) < distance(xmin, ymin, ul[0], ul[1]):
+				ul = [coor[0][0], coor[0][1]]
+			if distance(xmax, ymin, coor[0][0], coor[0][1]) < distance(xmax, ymin, ur[0], ur[1]):
+				ur = [coor[0][0], coor[0][1]]
+			if distance(xmin, ymax, coor[0][0], coor[0][1]) < distance(xmin, ymax, bl[0], bl[1]):
+				bl = [coor[0][0], coor[0][1]]
+	br = [ur[0], bl[1]]
+	
+	return ul, ur, bl, br
 
 def main():
 	positioning_squares = []

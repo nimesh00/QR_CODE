@@ -22,7 +22,7 @@ def detect_all_squares(image):
 
 def sorted_areas(contours):
 	areas = []
-	print "total contours: ", len(contours)
+	#print "total contours: ", len(contours)
 	required_areas = []
 	required_contour = []
 	no_of_contours = 0
@@ -51,7 +51,7 @@ def sorted_areas(contours):
 					required_contour[: no_of_contour_here + 1] = required_contour[: no_of_contour_here + 1] + [cnt]
 					break
 		required_contour = required_contour[:9]
-		print len(required_contour)
+		#print len(required_contour)
 	
 	return required_contour
 '''
@@ -102,8 +102,10 @@ def generate_array(img, ul, ur, bl):
 					array[i][j] = 1
 			else:
 				array[i][j] = 0
+	'''
 	for k in range(21):
 		print array[k]
+	'''
 	cv2.imshow('clipped', qr)
 	return array
 
@@ -151,9 +153,11 @@ def get_mask_array(mask_number):
 					array[i][j] = 1
 				else:
 					array[i][j] = 0
+	'''
 	print "Mask Pattern:"
 	for k in range(21):
 		print array[k]
+	'''
 	return array
 
 def unmask(array):
@@ -170,11 +174,66 @@ def unmask(array):
 				elif array[i][j] == 0:
 					array[i][j] = 1
 	return array
-					
+
+def decode(array):
+	format_no = 8 * array[20][20] + 4 * array[20][19] + 2 * array[19][20] + array[19][19]
+	if format_no == 0:
+		print "kuch nahi pata"
+	elif format_no == 1:
+		print "Numeric encoding"
+		data_bit_length = 10
+		data_byte = [0 for i in range(data_bit_length)]
+		msg_byte = [0 for i in range(data_bit_length)]
+		required_data = 0
+		msg_length = 0
+		'''
+		for j in range(18, 14, -1):
+			if i == 20:
+				i = 19
+			elif i == 19:
+				i = 20
+			y_pointer = 18 - j
+			x_pointer = 20 - i
+			msg_byte[index] = array[i][j]
+		'''
+		y_pointer = 37
+		x_curr = 20
+		column_no = 1
+		for i in range(data_bit_length):
+			y_curr = int((37 - i) / 2)
+			msg_byte[i] = array[y_curr][x_curr]
+			msg_length += msg_byte[i] * (2 ** (9 - i))
+			if column_no == 1:
+				if x_curr == 19 - 2 * (column_no - 1):
+					x_curr = 20 - 2 * (column_no - 1)
+				elif x_curr == 20 - 2 * (column_no - 1):
+					x_curr = 19 - 2 * (column_no - 1)
+			
+		y_pointer = 2 * (y_curr - 1) + 1
+
+		for i in range(data_bit_length):
+			y_curr = int((y_pointer - i) / 2)
+			data_byte[i] = array[y_curr][x_curr]
+			if column_no == 1:
+				if x_curr == 19 - 2 * (column_no - 1):
+					x_curr = 20 - 2 * (column_no - 1)
+				elif x_curr == 20 - 2 * (column_no - 1):
+					x_curr = 19 - 2 * (column_no - 1)
+			
+		print "data byte:",data_byte
+		k = data_bit_length - 1
+		while (data_byte[k] == 0) and ((data_bit_length - k) < 7):
+			k -= 1
+		index = k
+		while k >= 0:
+			required_data += data_byte[k] * (2 ** (index - k))
+			k -= 1
+		return required_data
+
 def main():
 	positioning_squares = []
 	font = cv2.FONT_HERSHEY_SIMPLEX
-	image = cv2.imread("qr_22.png")
+	image = cv2.imread("qr_6.png")
 	image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 	ret, image = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)
 	image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
@@ -182,12 +241,12 @@ def main():
 	image2 = cv2.imread("qr.png")
 	square_contours = detect_all_squares(image)
 	positioning_squares = sorted_areas(square_contours)
-	print "contours returned: ", len(positioning_squares)
+	#print "contours returned: ", len(positioning_squares)
 	i = 0
 	cv2.drawContours(image, [positioning_squares[3]], 0, (0, 255, 0), 1)
 	cv2.imshow('image', image)
 	for coor in positioning_squares:
-		print "coordinate",i, "area", cv2.contourArea(coor),": ", coor
+		#print "coordinate",i, "area", cv2.contourArea(coor),": ", coor
 		i += 1
 		cv2.drawContours(image, [coor], 0, (0, 0, 255), 1)
 	
@@ -198,10 +257,13 @@ def main():
 	qr_array = generate_array(cv2.imread('qr.png'), upper_left_corner, upper_right_corner, bottom_left_corner)
 	unmasked_qr = unmask(qr_array)
 	
+	message = decode(unmasked_qr)
+	print "Final number", message
+	
 	print 'unamsked qr data:'
 	for i in range(21):
 		print unmasked_qr[i]
-	
+		
 	cv2.circle(image, (upper_left_corner[0], upper_left_corner[1]), 10, (255, 255, 0), -1)
 	cv2.putText( image, "upper_left_corner", (upper_left_corner[0], upper_left_corner[1]), font, 0.8, (0, 255, 0), 2, cv2.LINE_AA)
 	cv2.circle(image, (bottom_left_corner[0], bottom_left_corner[1]), 10, (255, 255, 0), -1)
