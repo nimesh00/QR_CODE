@@ -1,3 +1,5 @@
+#! /usr/bin/python
+
 import cv2
 import numpy as np
 import math
@@ -189,12 +191,45 @@ def normalised(qr):
 	'''
 	return array
 
+def smaller(h1, h2):
+	if h1 < h2:
+		return h1
+	else:
+		return h2
+
+def greater(h1, h2):
+	if h1 > h2:
+		return h1
+	else:
+		return h2
+
+def vertical_shear_normalise(qr, ul, ur, bl):
+	height, width = qr.shape[:2]
+	block_width = (ur[0] - ul[0]) / 21
+	block_total = 0
+	array = [[0 for i in range(21)] for j in range(21)]
+	h_diff = greater(ul[1], ur[1]) - smaller(ul[1], ur[1])
+	for j in range(21):
+		for i in range(21):
+			block_height = (((h_diff / 21) * j) + (bl[1] - smaller(ul[1], ur[1]))) / 21
+			print "width, height", block_width, block_height
+			y_curr = ((ur[1] - ul[1]) / 21) * j + ul[1]
+			print y_curr
+			block_total = 0
+			for k in range(block_height):
+				for l in range(block_width):
+					block_total += qr[y_curr + block_height * i + k][ul[0] + block_width * j + l]
+			array[i][j] = block_total / (block_height * block_width)
+			
+	return array
+
 def generate_array(img, ul, ur, bl):
 	array = [[0 for i in range(21)] for j in range(21)]
 	qr = img[ul[1]:bl[1], ul[0]:ur[0]]
-	qr = cv2.cvtColor(qr, cv2.COLOR_BGR2GRAY)
+	qr = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 	qr = cv2.resize(qr, (210, 210), interpolation = cv2.INTER_AREA)
 	averaged_array = normalised(qr)
+	#averaged_array = vertical_shear_normalise(qr, ul, ur, bl)
 	for i in range(21):
 		for j in range(21):
 			if averaged_array[i][j] < 100:

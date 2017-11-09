@@ -1,11 +1,13 @@
+#! /usr/bin/python
+
 import cv2
 import numpy as np
 import math
 
-cam = cv2.VideoCapture(0)
+cam = cv2.VideoCapture('flight_video.mp4')
 
 lower_black = [0, 0, 0]
-upper_black = [180, 255, 80]
+upper_black = [0, 0, 10]
 def detect_all_squares(image):
 	squares = []
 	#clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
@@ -104,6 +106,75 @@ def check_points(pos_sq):
 	
 	return pos_sq
 
+def distance(x1, y1, x2, y2):
+	return int(np.sqrt((x1 - x2)**2 + (y1 - y2)**2))
+
+def get_corner_points(p0, p1, p2):
+	x_coor = []
+	y_coor = []
+	points = [p0, p1, p2]
+	for i in range(3):
+		for cor in points[i]:
+			x_coor.append(cor[0][0])
+			y_coor.append(cor[0][1])
+	xmin = np.amin(x_coor)
+	xmax = np.amax(x_coor)
+	ymin = np.amin(y_coor)
+	ymax = np.amax(y_coor)
+	ul = [p0[0][0][0], p0[0][0][1]]
+	ur = [p0[0][0][0], p0[0][0][1]]
+	bl = [p0[0][0][0], p0[0][0][1]]
+	for i in range(3):
+		for coor in points[i]:
+			if distance(xmin, ymin, coor[0][0], coor[0][1]) < distance(xmin, ymin, ul[0], ul[1]):
+				ul = [coor[0][0], coor[0][1]]
+			if distance(xmax, ymin, coor[0][0], coor[0][1]) < distance(xmax, ymin, ur[0], ur[1]):
+				ur = [coor[0][0], coor[0][1]]
+			if distance(xmin, ymax, coor[0][0], coor[0][1]) < distance(xmin, ymax, bl[0], bl[1]):
+				bl = [coor[0][0], coor[0][1]]
+	br = [ur[0], bl[1]]
+	
+	return ul, ur, bl, br
+
+def correct_contours(p0, p1, p2):
+	x_coor = []
+	y_coor = []
+	max_dis_bw = []
+	points = [p0, p1, p2]
+	for i in range(3):
+		for cor in points[i]:
+			x_coor.append(cor[0][0])
+			y_coor.append(cor[0][1])
+	xmin = np.amin(x_coor)
+	xmax = np.amax(x_coor)
+	ymin = np.amin(y_coor)
+	ymax = np.amax(y_coor)
+	distance1 = distance(p0[0][0][0], p0[0][0][1], p1[0][0][0], p1[0][0][1])
+	max_dis_bw = [p0, p1]
+	distance2 = distance(p0[0][0][0], p0[0][0][1], p2[0][0][0], p2[0][0][1])
+	distance3 = distance(p1[0][0][0], p1[0][0][1], p2[0][0][0], p2[0][0][1])
+	if distance2 > distance1 and distance1 > distance3:
+		max_dis_bw = [p0, p2]
+	if distance3 > distance1 and distance3 > distance2:
+		max_dis_bw = [p1, p2]
+	for p in points:
+		print 'array checking',(p is max_dis_bw[0] or p is max_dis_bw[1])
+		if p is max_dis_bw[0] or p is max_dis_bw[1]:
+			continue
+		else:
+			pcenter = p
+			angle_diff = angle(p[0][0][0], p[0][0][1], p1[0][0][0], p1[0][0][1]) - angle(p[0][0][0], p[0][0][1], p2[0][0][0], p2[0][0][1])
+			distance1 = distance(p[0][0][0], p[0][0][1], p1[0][0][0], p1[0][0][1])
+			distance2 = distance(p[0][0][0], p[0][0][1], p2[0][0][0], p2[0][0][1])
+			distance_diff = distance1 - distance2
+			break
+	angle_diff = abs(angle_diff)
+	distance_diff = abs(distance_diff)
+	print "angle difference: ", angle_diff
+	print "distance difference: ", distance_diff
+	if (85 < angle_diff < 95 or 265 < angle_diff < 275) and (distance_diff < (distance1 + distance2) / 10):
+		return True
+	return False
 
 def main():
 	positioning_squares = []
@@ -112,12 +183,14 @@ def main():
 	while True:
 		cv2.waitKey(30)
 		ret, image = cam.read()
-		cv2.imshow('blue', image[:, :, 0])
-		cv2.imshow('green', image[:, :, 1])
-		cv2.imshow('red', image[:, :, 2])
+		image2 = image[:, :, :]
+		#cv2.imshow('blue', image[:, :, 0])
+		#cv2.imshow('green', image[:, :, 1])
+		#cv2.imshow('red', image[:, :, 2])
 		if not ret:
 			image = cv2.imread("qr.png")
-		image = cv2.GaussianBlur(image, (3,3), 0)
+		image = cv2.GaussianBlur(image, (1,1), 0)
+		ret, image[:, :, :] = cv2.threshold(image[:, :, :], 110, 255, cv2.THRESH_BINARY)
 		'''
 		for c in range(0,3):
 			image[:, :, c] = cv2.equalizeHist(image[:, :, c])
@@ -127,15 +200,13 @@ def main():
 		for coor in positioning_squares :
 			cv2.drawContours(image, [coor], 0, (0, 0, 255), 1)
 		cv2.imshow('image', image);
-		print "trying to get the corner squares......"
+		#print "trying to get the corner squares......"
 		if (len(positioning_squares) > 2):
 			#positioning_squares = check_points(positioning_squares)
-			upper_left_corner = positioning_squares[1][0][0]
-			bottom_left_corner = positioning_squares[2][1][0]
-			upper_right_corner = positioning_squares[0][3][0]
+			upper_left_corner, upper_right_corner, bottom_left_corner, bottom_right_corner = get_corner_points(positioning_squares[1], positioning_squares[2], positioning_squares[0])
 		else:
 			continue
-			
+			'''
 		if not positioned(upper_left_corner, bottom_left_corner, upper_right_corner):
 			cv2.circle(image, (upper_left_corner[0], upper_left_corner[1]), 10, (255, 255, 0), -1)
 			cv2.putText( image, "upper_left_corner", (upper_left_corner[0], upper_left_corner[1]), font, 0.8, (0, 255, 0), 2, cv2.LINE_AA)
@@ -143,12 +214,21 @@ def main():
 			cv2.putText( image, "bottom_left_corner", (bottom_left_corner[0], bottom_left_corner[1]), font, 0.8, (0, 255, 0), 2, cv2.LINE_AA)
 			cv2.circle(image, (upper_right_corner[0], upper_right_corner[1]), 10, (255, 255, 0), -1)
 			cv2.putText( image, "upper_right_corner", (upper_right_corner[0], upper_right_corner[1]), font, 0.8, (0, 255, 0), 2, cv2.LINE_AA)
-
+		
 			cv2.imshow('markers', image)
 			continue
-		
-		print positioning_squares
-		cv2.imwrite('snap_img.png', image)
+			'''
+		contours = [upper_left_corner, upper_right_corner, bottom_left_corner, bottom_right_corner]
+		if not correct_contours(positioning_squares[1], positioning_squares[2], positioning_squares[0]):
+			continue
+		print contours
+		cv2.circle(image, (upper_left_corner[0], upper_left_corner[1]), 10, (255, 255, 0), -1)
+		cv2.putText( image, "upper_left_corner", (upper_left_corner[0], upper_left_corner[1]), font, 0.8, (0, 255, 0), 2, cv2.LINE_AA)
+		cv2.circle(image, (bottom_left_corner[0], bottom_left_corner[1]), 10, (255, 255, 0), -1)
+		cv2.putText( image, "bottom_left_corner", (bottom_left_corner[0], bottom_left_corner[1]), font, 0.8, (0, 255, 0), 2, cv2.LINE_AA)
+		cv2.circle(image, (upper_right_corner[0], upper_right_corner[1]), 10, (255, 255, 0), -1)
+		cv2.putText( image, "upper_right_corner", (upper_right_corner[0], upper_right_corner[1]), font, 0.8, (0, 255, 0), 2, cv2.LINE_AA)
+		cv2.imwrite('snap_img.png', image2)
 		break
 		k = cv2.waitKey(30)
 		if k == 27:
