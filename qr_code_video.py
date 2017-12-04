@@ -81,6 +81,7 @@ def angle(xp,yp,xb,yb):
     print mtan
     return mtan
 
+'''
 def positioned(pt1, pt2, pt3):
 	angle1 = angle(pt2[0], pt2[1], pt1[0], pt1[1])
 	angle2 = angle(pt1[0], pt1[1], pt3[0], pt3[1])
@@ -88,7 +89,9 @@ def positioned(pt1, pt2, pt3):
 	if angle1 - angle2 != 90:
 		return False
 	return True
+'''
 
+'''
 def check_points(pos_sq):
 	swapper = []
 	angles = []
@@ -105,6 +108,7 @@ def check_points(pos_sq):
 	#sort(angles)
 	
 	return pos_sq
+'''
 
 def distance(x1, y1, x2, y2):
 	return int(np.sqrt((x1 - x2)**2 + (y1 - y2)**2))
@@ -172,7 +176,7 @@ def correct_contours(p0, p1, p2):
 	distance_diff = abs(distance_diff)
 	print "angle difference: ", angle_diff
 	print "distance difference: ", distance_diff
-	if (85 < angle_diff < 95 or 265 < angle_diff < 275) and (distance_diff < (distance1 + distance2) / 10):
+	if (85 < angle_diff < 95 or 265 < angle_diff < 275) and (distance_diff < (distance1 + distance2) / (2 * 5)):
 		return True
 	return False
 
@@ -197,12 +201,11 @@ def main():
 			'''
 		square_contours = detect_all_squares(image)
 		positioning_squares = sorted_areas(square_contours)
-		for coor in positioning_squares :
-			cv2.drawContours(image, [coor], 0, (0, 0, 255), 1)
-		cv2.imshow('image', image);
+		#for coor in positioning_squares :
+			#cv2.drawContours(image2, [coor], 0, (0, 0, 255), 1)
+		#cv2.imshow('image', image2);
 		#print "trying to get the corner squares......"
-		if (len(positioning_squares) > 2):
-			#positioning_squares = check_points(positioning_squares)
+		if len(positioning_squares) > 2:
 			upper_left_corner, upper_right_corner, bottom_left_corner, bottom_right_corner = get_corner_points(positioning_squares[1], positioning_squares[2], positioning_squares[0])
 		else:
 			continue

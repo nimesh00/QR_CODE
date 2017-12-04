@@ -12,7 +12,8 @@ def detect_all_squares(image):
 	upper = np.array(upper_black)
 	mask = cv2.inRange(hsv, lower, upper)
 	cv2.waitKey(30)
-	img, contours,  h = cv2.findContours(mask, 1, 2)
+	img, contours,  h = cv2.findContours(mask, 1, cv2.CHAIN_APPROX_SIMPLE)
+	print 'contours: ',contours
 	for cnt in contours:
 		epsilon = 0.15 * cv2.arcLength(cnt, True)
 		approx = cv2.approxPolyDP(cnt, epsilon, True)

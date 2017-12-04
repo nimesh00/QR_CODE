@@ -8,6 +8,7 @@ lower_black = [0, 0, 0]
 upper_black = [0, 0, 10]
 def detect_all_squares(image):
 	squares = []
+	image2 = image[:, :, :]
 	hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 	lower = np.array(lower_black)
 	upper = np.array(upper_black)
@@ -20,11 +21,15 @@ def detect_all_squares(image):
 		area = cv2.contourArea(cnt)
 		if area > 400:
 			if len(approx) == 4:
+				#cv2.drawContours(image2, [cnt], 0, (0, 0, 255), 1)
 				squares = squares + [cnt]
+	cv2.imshow('contours', image2)
+	cv2.waitKey(0)
 	return squares
 	
 def detect_all_squares_again(image):
 	squares = []
+	image2 = image[:, :, :]
 	hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 	lower = np.array(lower_black)
 	upper = np.array(upper_black)
@@ -32,12 +37,15 @@ def detect_all_squares_again(image):
 	cv2.waitKey(30)
 	img, contours,  h = cv2.findContours(mask, 1, 2)
 	for cnt in contours:
-		epsilon = 0.3 * cv2.arcLength(cnt, True)
+		epsilon = 0.05 * cv2.arcLength(cnt, True)
 		approx = cv2.approxPolyDP(cnt, epsilon, True)
 		area = cv2.contourArea(cnt)
 		if area > 400:
 			if len(approx) == 4:
+				cv2.drawContours(image2, [cnt], 0, (0, 0, 255), 1)
 				squares = squares + [cnt]
+	cv2.imshow('contours', image2)
+	cv2.waitKey(0)
 	return squares
 
 def sorted_areas(contours):
@@ -166,6 +174,8 @@ def get_small_area_image(img, p1, p2, p0):
 	xmax = np.amax(x_coor)
 	ymin = np.amin(y_coor)
 	ymax = np.amax(y_coor)
+	angle1 = 0
+	angle2 = 0
 	distance1 = distance(p0[0][0][0], p0[0][0][1], p1[0][0][0], p1[0][0][1])
 	max_dis_bw = [p0, p1]
 	distance2 = distance(p0[0][0][0], p0[0][0][1], p2[0][0][0], p2[0][0][1])
@@ -178,14 +188,56 @@ def get_small_area_image(img, p1, p2, p0):
 		if p in max_dis_bw:
 			continue
 		else:
-			rotation_angle = angle(p[0][0][0], p[0][0][1], p1[0][0][0], p1[0][0][1])
+			#rotation_angle = angle(p[0][0][0], p[0][0][1], p1[0][0][0], p1[0][0][1])
+			angle1 = angle(p[0][0][0], p[0][0][1], p1[0][0][0], p1[0][0][1])
+			angle2 = angle(p[0][0][0], p[0][0][1], p2[0][0][0], p2[0][0][1])
 	y_correction = distance(xmin, ymin, xmax, ymax) - (ymax - ymin)
 	x_correction = distance(xmin, ymin, xmax, ymax) - (xmax - xmin)
 	small_img = img[ymin - y_correction:ymax + y_correction, xmin - x_correction:xmax + x_correction]
+	'''
+	if angle1 > angle2:
+		if 0 < angle2 < 90:
+			rotation_angle = angle2
+		elif 90 < angle2 < 180:
+			rotation_angle = angle1
+		else:
+			rotation_angle = 360 - angle2
+	elif angle2 > angle1:
+		if 0 < angle1 < 90:
+			rotation_angle = angle1
+		elif 90 < angle1 < 180:
+			rotation_angle = angle2
+		else:
+			rotation_angle = 360 - angle1
+	'''		
 	
-	small_img = rotate(small_img, -1 * rotation_angle)
+	print "angles: ", angle1, angle2
 	
-	#cv2.imshow('small_one', small_img)
+	if abs(angle1 - angle2) < 180:
+		if angle1 > angle2:
+			rotation_angle = angle2
+		else:
+			rotation_angle = angle1
+	elif abs(angle1 - angle2) > 180:
+		if angle1 > angle2:
+			rotation_angle = angle1
+		else:
+			rotation_angle = angle2
+	small_img = rotate(small_img, rotation_angle - 180)
+	print "before angle error"
+	cv2.imshow('small_one', small_img)
+	ul, ur, bl, br = position(small_img[:])
+	angle_error = angle(ul[0], ul[1], ur[0], ur[1]) - 180
+	print "angle error", angle_error
+	cv2.waitKey(0)
+	
+	small_img = rotate(small_img, angle_error)
+	
+	print "after angle error"
+	cv2.imshow('small_one', small_img)
+	cv2.waitKey(0)
+
+	cv2.imshow('small_one', small_img)
 	return small_img
 
 def normalised(qr):
@@ -307,8 +359,9 @@ def positionGray(img):
 		img = cv2.GaussianBlur(img, (1, 1), 0)
 		img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 	'''
-	ret, img = cv2.threshold(img, 100, 255, cv2.THRESH_TOZERO)
-	ret, img = cv2.threshold(img, 100, 255, cv2.THRESH_BINARY)
+	img = cv2.GaussianBlur(img, (3, 3), 0)
+	ret, img = cv2.threshold(img, 80, 255, cv2.THRESH_TOZERO)
+	ret, img = cv2.threshold(img, 80, 255, cv2.THRESH_BINARY)
 	
 	img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
 	positioning_squares = []
@@ -355,9 +408,10 @@ def vertical_shear_normalise(qr, ul, ur, bl, br):
 	print "given four points: ", ul, ur, bl, br
 	height, width = qr.shape[:2]
 	#print "old width : ", width
-	width = int(float(width / (ur[0] - ul[0])) * 210)
+	width = int((float(width) / (ur[0] - ul[0])) * 210)
 	#print "new width : ", width
-	qr2 = cv2.resize(qr, (width, height), interpolation = cv2.INTER_AREA)
+	qr2 = cv2.resize(qr, (width, height), interpolation = cv2.INTER_CUBIC)
+	qr2 = cv2.bilateralFilter(qr2, 9, 75, 75)
 	ul, ur, bl, br = positionGray(qr2)
 	cv2.imshow('resized', qr2)
 	cv2.waitKey(0)
@@ -568,13 +622,21 @@ def decode(array):
 			k -= 1
 		return required_data
 
+def backgroundAlter(img, ul, ur, bl):
+	br = [ur[0], bl[1]]
+	height, width = img.shape[:2]
+	for i in range(height):
+		for j in range(width):
+			if not((j > ul[0] - 10 and j < ur[0] + 10) and (i > ul[1] - 10 and i < bl[1] + 10)):
+				img[i, j] = 255
+	return img
 
 
 def main():
 	positioning_squares = []
 	font = cv2.FONT_HERSHEY_SIMPLEX
 	image = cv2.imread("snap_img.png")
-	
+	image = cv2.GaussianBlur(image, (1,1), 0)
 	ret, image[:, :, :] = cv2.threshold(image[:, :, :], 110, 255, cv2.THRESH_BINARY)
 	#image = cv2.GaussianBlur(image, (5,5), 0)
 	image2 = cv2.imread("snap_img.png")
@@ -602,6 +664,8 @@ def main():
 	small_image = cv2.cvtColor(small_image, cv2.COLOR_GRAY2BGR)
 	cv2.imshow('small_with_corner', small_image)
 	cv2.waitKey(0)
+	ul, ur, bl, br = position(small_image)
+	small_image = backgroundAlter(small_image, ul, ur, bl)
 	cv2.imwrite('small_qr.png', small_image)
 	small2 = cv2.imread('small_qr.png')
 	#print 'blue channel: ', small_image[1, 1, 0]
